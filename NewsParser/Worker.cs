@@ -20,14 +20,19 @@ public class Worker : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
-        {            
+        {
             _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
             // var sites = await _repository.GetNewsSites();
             // Console.WriteLine(sites.FirstOrDefault()?.Name + sites.FirstOrDefault()?.Link);
             // await Task.Delay(1000, stoppingToken);
-            
+
             // await _tgService.SendMessage("test");
-            await _repository.AddNews(new List<News> { new News { Link = "Test worker", Label = "Test Link" } } );
+            await _repository.AddNews(
+                new List<News>
+                {
+                    new News { Link = "Test worker", Label = "Test Link" }
+                }
+            );
             return;
         }
     }
