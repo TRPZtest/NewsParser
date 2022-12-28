@@ -1,5 +1,7 @@
+using HtmlAgilityPack;
 using NewsParser.Dal;
 using NewsParser.Models;
+using NewsParser.Parsers;
 using NewsParser.Services;
 
 namespace NewsParser;
@@ -21,19 +23,48 @@ public class Worker : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-            // var sites = await _repository.GetNewsSites();
-            // Console.WriteLine(sites.FirstOrDefault()?.Name + sites.FirstOrDefault()?.Link);
-            // await Task.Delay(1000, stoppingToken);
+            try
+            {
+                _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
 
-            // await _tgService.SendMessage("test");
-            await _repository.AddNews(
-                new List<News>
+                var web = new HtmlWeb();
+                var sites = await _repository.GetNewsSitesAsync();
+
+                var htmlDocs = new List<HtmlDocument>();
+
+                foreach (var site in sites)
                 {
-                    new News { Link = "Test worker", Label = "Test Link" }
+                    var doc = await web.LoadFromWebAsync(site.Link);
+                    NewsParserBase parser = new NewsLinkTitlesParser(site.XpathString, site.Id);
+
+                    var parsedNews = parser.GetNews(doc);
+
+                    var lastNews = await _repository.GetLastNewsAsync(site.Id, parsedNews.Count());
+
+                    var freshNews = parsedNews.Where(
+                        x => !lastNews.Select(y => y.Link).Contains(x.Link)
+                    );
+
+                    await _repository.AddNewsAsync(freshNews);
+
+                    await SendNewsToTelegram(freshNews, stoppingToken);
                 }
-            );
-            return;
+                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message + "\n" + ex.StackTrace);
+                await Task.Delay(20_000, stoppingToken);
+            }
+        }
+    }
+
+    private async Task SendNewsToTelegram(IEnumerable<News> news, CancellationToken stoppingToken)
+    {
+        foreach (var n in news)
+        {
+            await Task.Delay(2_000, stoppingToken);
+            await _tgService.SendMessage($"{n.Label}\n{n.Link}");
         }
     }
 }
