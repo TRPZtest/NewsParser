@@ -49,11 +49,11 @@ public class Worker : BackgroundService
 
                     await SendNewsToTelegram(freshNews, stoppingToken);
                 }
-                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message + "\n" + ex.StackTrace);
+                _logger.LogError(ex.Message + "\n" + ex.StackTrace);                     
                 await Task.Delay(20_000, stoppingToken);
             }
         }
@@ -63,7 +63,7 @@ public class Worker : BackgroundService
     {
         foreach (var n in news)
         {
-            await Task.Delay(2_000, stoppingToken);
+            await Task.Delay(3_000, stoppingToken);
             await _tgService.SendMessage($"{n.Label}\n{n.Link}");
         }
     }
